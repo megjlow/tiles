@@ -1,7 +1,7 @@
 #include <ESP8266WiFi.h>
 #include <WiFiUdp.h>
 #include <FS.h>
-#include <httpd.h>
+#include <Httpd.h>
 
 const char* ssid = "";
 const char* password = "";
@@ -106,7 +106,7 @@ const char* js PROGMEM =  "HTTP/1.1 200 OK\r\nContent-Type: application/javascri
       "[' ', 'TREE: pwm pin %m.ppin get', 'getPwm', '1']\n"
     "],\n"
     "'menus': {\n"
-      "'pin': ['1', '2', '3', '4'],\n"
+      "'pin': ['1', '2', '3'],\n"
       "'dsetting': ['on', 'off'],\n"
       "'ppin': ['1', '2']\n"
      "},\n"
@@ -119,10 +119,15 @@ const char* js PROGMEM =  "HTTP/1.1 200 OK\r\nContent-Type: application/javascri
   "ext.getPwm = function(pin) {\n"
   "};\n"
   "ext.setPwm = function(pin, setting) {\n"
-    "var url = 'http://%%%%%%/gpio4/' + setting;\n"
+    "var p = 4;\n"
+    "if(pin == 2) {\n"
+      "p = 5;\n"
+    "}\n"
+    "var url = 'http://%%%%%%/gpio' + p + '/' + setting;\n"
     "$.ajax({\n"
       "type: 'POST',\n"
       "url: url,\n"
+      "async: false,\n"
       "success: function(response) {\n"
       "}\n"
     "});\n"
@@ -134,16 +139,25 @@ const char* js PROGMEM =  "HTTP/1.1 200 OK\r\nContent-Type: application/javascri
     "if(setting == 'off') {\n"
       "s = 1;\n"
     "}\n"
-    "var url = 'http://%%%%%%/gpio2/' + s; "
-"console.log('setting' + setting);"
-"$.ajax({"
-"type: 'POST'," 
-"url: url," 
-"success: function(response) {"
-"alert('success');"
-"}"
-"});"
-"};"
+    "var p = 12;\n"
+    "if(pin == 1) {\n"
+      "p = 12;\n"
+    "}\n"
+    "else if(pin == 2) {\n"
+      "p = 13;"
+    "}\n"
+    "else if(pin == 3) {\n"
+      "p = 14;\n"
+    "}\n"
+    "var url = 'http://%%%%%%/gpio' + p + '/' + s; "
+"$.ajax({\n"
+"type: 'POST',\n" 
+"url: url,\n" 
+"async: false,\n"
+"success: function(response) {\n"
+"}\n"
+"});\n"
+"};\n"
 "ScratchExtensions.register('Link Opener', descriptor, ext);})();";
 
 String IpAddress2String(const IPAddress& ipAddress)
@@ -263,11 +277,10 @@ void loop() {
   client.readBytes(buffer, bytesavailable);
   buffer[bytesavailable + 1] = '\0';
 
-    HttpRequest* req = httpd.parseRequest(buffer);
+  HttpRequest* req = httpd.parseRequest(buffer);
 
   String url = String(req->getRequestUrl());
   String method = String(req->getRequestMethod());
-  String val = "";
 
   //WiFi.localIP().toString().toCharArray(buf, 50);
 
@@ -286,8 +299,8 @@ void loop() {
         }
         client.write((char*)buffer, read);
       }
-      f.close();
     }
+    f.close();
     // return the test page
     if(url.indexOf("test.html") != -1) {
       client.print(idx);
@@ -353,27 +366,8 @@ void loop() {
     else if(method.indexOf("PUT")) {
       
     }
-    /*
-    if(url.indexOf("/gpio") != -1) {
-      if(url.indexOf("/gpio2/0") != -1) {
-        digitalWrite(2, 0);
-        val = "high";
-        Response* resp = httpd.createResponse("200", digitalRead(2));
-        client.print(resp->getResponse());
-        delete resp;
-      }
-      else if(url.indexOf("/gpio2/1") != -1) {
-        digitalWrite(2, 1);
-        val = "low";
-        Response* resp = httpd.createResponse("200", digitalRead(2));
-        client.print(resp->getResponse());
-        delete resp;
-      }
-    }
-    */
   }
 
-  delay(100);
+  delay(10);
   delete req;
-
 } 
