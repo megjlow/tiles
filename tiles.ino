@@ -119,7 +119,7 @@ const char* js PROGMEM =  "HTTP/1.1 200 OK\r\nContent-Type: application/javascri
   "ext.getPwm = function(pin) {\n"
   "};\n"
   "ext.setPwm = function(pin, setting) {\n"
-    "var url = 'http://%%%%%%/gpio2/' + setting;\n"
+    "var url = 'http://%%%%%%/gpio4/' + setting;\n"
     "$.ajax({\n"
       "type: 'POST',\n"
       "url: url,\n"
