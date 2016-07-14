@@ -2,9 +2,45 @@
 #include <WiFiUdp.h>
 #include <FS.h>
 #include <Httpd.h>
+#include <Configuration.h>
 
-const char* ssid = "";
-const char* password = "";
+const char* ssid = "darkblack";
+const char* password = "peekaboo123";
+
+const char *upload PROGMEM = "HTTP/1.1 200 OK\r\nContent-Type: text/html; charset=UTF-8\r\nAccess-Control-Allow-Origin: *\r\n\r\n"
+"<!DOCTYPE html>"
+"<html lang=\"en-US\">"
+ "<head>"
+    "<meta charset=\"UTF-8\">" 
+    "<title>File upload</title>"
+    "<script src='https://ajax.googleapis.com/ajax/libs/jquery/3.0.0/jquery.min.js'></script>"
+      "<script type='text/javascript'>"
+          "$(document).ready(function() {"
+            ""
+            "$('#upload').on('click', function(e) {"
+              "e.preventDefault();"
+              "var filename = $('#filename').val();"
+              "$.ajax({"
+                "type: \"POST\","
+                "url: 'http://' + location.host + '/uploadfile',"
+                "data: {"
+                  "filename: filename,"
+                  "contents: $('#textarea').val()"
+                "},"
+                "success: function(response) {"
+                "}"
+              "});"
+            "});"
+            ""
+          "});"
+        "</script>"
+  "</head>"
+  "<body>"
+    "<label>Filename:</label><input type=\"text\" id=\"filename\" />"
+    "<textarea id=\"textarea\" rows=\"10\" columns=\"200\" style=\"display:block;\"></textarea>"
+    "<a href=\"javascript:void(0);\" id=\"upload\">Upload</a>"
+  "</body>"
+"</html>";
 
 const char *cors PROGMEM = "HTTP/1.1 200 OK\r\nContent-Type: text/xml\r\n\r\n"
 "<?xml version=\"1.0\" ?>\n"
@@ -100,13 +136,13 @@ const char* js PROGMEM =  "HTTP/1.1 200 OK\r\nContent-Type: application/javascri
   "var ext = this;\n"
   "var descriptor = {\n"
     "blocks: [\n"
-      "[' ', 'TREE: digital pin %m.pin setting %m.dsetting', 'setDigital', '1', 'off'],\n"
-      "[' ', 'TREE: pwm pin %m.ppin setting %n', 'setPwm', '1', '100'],\n"
-      "[' ', 'TREE: digital pin %m.pin get', 'getDigital', '1'],\n"
-      "[' ', 'TREE: pwm pin %m.ppin get', 'getPwm', '1']\n"
+      "[' ', 'SUN: digital pin %m.pin setting %m.dsetting', 'setDigital', '1', 'off'],\n"
+      "[' ', 'pwm pin %m.ppin setting %n', 'setPwm', '1', '100'],\n"
+      "[' ', 'digital pin %m.pin get', 'getDigital', '1'],\n"
+      "[' ', 'pwm pin %m.ppin get', 'getPwm', '1']\n"
     "],\n"
     "'menus': {\n"
-      "'pin': ['1', '2', '3'],\n"
+      "'pin': ['1', '2', '3', '4'],\n"
       "'dsetting': ['on', 'off'],\n"
       "'ppin': ['1', '2']\n"
      "},\n"
@@ -119,45 +155,21 @@ const char* js PROGMEM =  "HTTP/1.1 200 OK\r\nContent-Type: application/javascri
   "ext.getPwm = function(pin) {\n"
   "};\n"
   "ext.setPwm = function(pin, setting) {\n"
-    "var p = 4;\n"
-    "if(pin == 2) {\n"
-      "p = 5;\n"
-    "}\n"
-    "var url = 'http://%%%%%%/gpio' + p + '/' + setting;\n"
-    "$.ajax({\n"
-      "type: 'POST',\n"
-      "url: url,\n"
-      "async: false,\n"
-      "success: function(response) {\n"
-      "}\n"
-    "});\n"
   "};\n"
   "ext.getDigital = function(pin) {\n"
   "};\n"
-  "ext.setDigital = function(pin, setting) {"
-    "var s = 1;\n"
-    "if(setting == 'off') {\n"
-      "s = 0;\n"
-    "}\n"
-    "var p = 12;\n"
-    "if(pin == 1) {\n"
-      "p = 12;\n"
-    "}\n"
-    "else if(pin == 2) {\n"
-      "p = 13;"
-    "}\n"
-    "else if(pin == 3) {\n"
-      "p = 14;\n"
-    "}\n"
-    "var url = 'http://%%%%%%/gpio' + p + '/' + s; "
-"$.ajax({\n"
-"type: 'POST',\n" 
-"url: url,\n" 
-"async: false,\n"
-"success: function(response) {\n"
-"}\n"
-"});\n"
-"};\n"
+  "ext.setDigital = function(setting, url) {"
+    "alert(url);"
+    "var url = 'http://%%%%%%/gpio2/' + setting; "
+"console.log('setting' + setting);"
+"$.ajax({"
+"type: 'POST'," 
+"url: url," 
+"success: function(response) {"
+"alert('success');"
+"}"
+"});"
+"};"
 "ScratchExtensions.register('Link Opener', descriptor, ext);})();";
 
 String IpAddress2String(const IPAddress& ipAddress)
@@ -183,11 +195,32 @@ void setup() {
   SPIFFS.begin();
   Serial.println("spiffs started");
 
+  Configuration* config = new Configuration("/config.txt");
+Serial.println("ocnfig constructed");
+  char* hostname = config->getConfigurationSetting("hostname");
+  if(hostname != NULL) {
+    Serial.print("got hostname: ");
+    Serial.println(hostname);
+  }
+  else {
+    Serial.println("failed to retrieve hostname");
+    hostname = "unknown";
+  }
+  
+/*
+  File f = SPIFFS.open("/config.txt", "w");
+  if(f) {
+    f.println("hostname=SUN");
+    f.println("ip=192.168.2.102");
+    f.close();
+  }
+*/
   /*
   SPIFFS.format();
   Serial.println("format complete");
   SPIFFS.end();
   */
+  
   /*
   File f = SPIFFS.open("/config.txt", "r");
   if(f) {
@@ -224,7 +257,7 @@ void setup() {
   Serial.print("Connecting to ");
   Serial.println(ssid);
 
-  WiFi.hostname("huzzah");
+  WiFi.hostname(hostname);
   WiFi.begin(ssid, password);
 
   while (WiFi.status() != WL_CONNECTED) {
@@ -240,6 +273,8 @@ void setup() {
 
   // Print the IP address
   Serial.println(WiFi.localIP());
+
+  delete config;
 }
 
 void loop() {
@@ -281,6 +316,7 @@ void loop() {
 
   String url = String(req->getRequestUrl());
   String method = String(req->getRequestMethod());
+  Serial.println(url);
 
   //WiFi.localIP().toString().toCharArray(buf, 50);
 
@@ -299,11 +335,14 @@ void loop() {
         }
         client.write((char*)buffer, read);
       }
+      f.close();
     }
-    f.close();
     // return the test page
     if(url.indexOf("test.html") != -1) {
       client.print(idx);
+    }
+    else if(url.indexOf("fileupload.html") != -1) {
+      client.print(upload);
     }
     else if(url.indexOf("extension.js") != -1) {
       char buf[50];
@@ -332,42 +371,67 @@ void loop() {
     }
   }
   else if(method.indexOf("POST") != -1) {
-    // WRITE the state of a pin
-    int pin = req->getPinNumber();
-    int setting = req->getPinSetting();
-    if(pin == 2 || pin == 12 || pin == 13 || pin == 14) {
-      Serial.print("setting digital pin #");
-      Serial.print(pin);
-      Serial.print(" to ");
-      Serial.println(setting);
-      digitalWrite(pin, setting);
-      HttpResponse* resp = httpd.createResponse("200", digitalRead(pin));
+    Serial.println("post");
+    if(url.indexOf("/uploadfile") != -1) {
+      Serial.println("upload file request");
+      HttpResponse* resp = httpd.createResponse("200", 1);
       client.print(resp->getResponse());
       delete resp;
-      Serial.print("digital pin #");
-      Serial.print(pin);
-      Serial.print(" is set to ");
-      Serial.println(digitalRead(pin));
     }
-    else if(pin == 4 || pin == 5) {
-      Serial.print("setting pwm pin #");
-      Serial.print(pin);
-      Serial.print(" to ");
-      Serial.println(setting);
-      analogWrite(pin, setting); 
-      HttpResponse* resp = httpd.createResponse("200", analogRead(pin));
-      client.print(resp->getResponse());
-      delete resp;
-      Serial.print("pwm pin #");
-      Serial.print(pin);
-      Serial.print(" is set to ");
-      Serial.println(analogRead(pin));
+    else {
+      // WRITE the state of a pin
+      int pin = req->getPinNumber();
+      int setting = req->getPinSetting();
+      if(pin == 2 || pin == 12 || pin == 13 || pin == 14) {
+        Serial.print("setting digital pin #");
+        Serial.print(pin);
+        Serial.print(" to ");
+        Serial.println(setting);
+        digitalWrite(pin, setting);
+        HttpResponse* resp = httpd.createResponse("200", digitalRead(pin));
+        client.print(resp->getResponse());
+        delete resp;
+        Serial.print("digital pin #");
+        Serial.print(pin);
+        Serial.print(" is set to ");
+        Serial.println(digitalRead(pin));
+      }
+      else if(pin == 4 || pin == 5) {
+        Serial.print("setting pwm pin #");
+        Serial.print(pin);
+        Serial.print(" to ");
+        Serial.println(setting);
+        analogWrite(pin, setting); 
+        HttpResponse* resp = httpd.createResponse("200", analogRead(pin));
+        client.print(resp->getResponse());
+        delete resp;
+        Serial.print("pwm pin #");
+        Serial.print(pin);
+        Serial.print(" is set to ");
+        Serial.println(analogRead(pin));
+      }
     }
-    else if(method.indexOf("PUT")) {
-      
+    /*
+    if(url.indexOf("/gpio") != -1) {
+      if(url.indexOf("/gpio2/0") != -1) {
+        digitalWrite(2, 0);
+        val = "high";
+        Response* resp = httpd.createResponse("200", digitalRead(2));
+        client.print(resp->getResponse());
+        delete resp;
+      }
+      else if(url.indexOf("/gpio2/1") != -1) {
+        digitalWrite(2, 1);
+        val = "low";
+        Response* resp = httpd.createResponse("200", digitalRead(2));
+        client.print(resp->getResponse());
+        delete resp;
+      }
     }
+    */
   }
 
-  delay(10);
+  delay(1);
   delete req;
+
 } 
