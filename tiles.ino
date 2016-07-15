@@ -4,8 +4,8 @@
 #include <Httpd.h>
 #include <Configuration.h>
 
-const char* ssid = "darkblack";
-const char* password = "peekaboo123";
+const char* ssid = "";
+const char* password = "";
 
 const char *upload PROGMEM = "HTTP/1.1 200 OK\r\nContent-Type: text/html; charset=UTF-8\r\nAccess-Control-Allow-Origin: *\r\n\r\n"
 "<!DOCTYPE html>"
