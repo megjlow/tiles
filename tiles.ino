@@ -1,11 +1,11 @@
 #include <ESP8266WiFi.h>
-#include <WiFiUdp.h>
+//#include <WiFiUdp.h>
 #include <FS.h>
 #include <Httpd.h>
 #include <Configuration.h>
 
-const char* ssid = "";
-const char* password = "";
+const char* ssid = "tiles";
+const char* password = "peekaboo";
 
 const char *upload PROGMEM = "HTTP/1.1 200 OK\r\nContent-Type: text/html; charset=UTF-8\r\nAccess-Control-Allow-Origin: *\r\n\r\n"
 "<!DOCTYPE html>"
@@ -42,11 +42,6 @@ const char *upload PROGMEM = "HTTP/1.1 200 OK\r\nContent-Type: text/html; charse
   "</body>"
 "</html>";
 
-const char *cors PROGMEM = "HTTP/1.1 200 OK\r\nContent-Type: text/xml\r\n\r\n"
-"<?xml version=\"1.0\" ?>\n"
-"<cross-domain-policy>\n"
-"<allow-access-from domain=\"*\" />\n"
-"</cross-domain-policy>";
 
 
 const char *idx PROGMEM =  "HTTP/1.1 200 OK\r\nContent-Type: text/html\r\n\r\n"
@@ -131,47 +126,6 @@ const char *idx PROGMEM =  "HTTP/1.1 200 OK\r\nContent-Type: text/html\r\n\r\n"
   "</body>"
 "</html>";
 
-const char* js PROGMEM =  "HTTP/1.1 200 OK\r\nContent-Type: application/javascript; charset=UTF-8\r\nAccess-Control-Allow-Origin: *\r\n\r\n"
-"new (function() {\n"
-  "var ext = this;\n"
-  "var descriptor = {\n"
-    "blocks: [\n"
-      "[' ', 'SUN: digital pin %m.pin setting %m.dsetting', 'setDigital', '1', 'off'],\n"
-      "[' ', 'pwm pin %m.ppin setting %n', 'setPwm', '1', '100'],\n"
-      "[' ', 'digital pin %m.pin get', 'getDigital', '1'],\n"
-      "[' ', 'pwm pin %m.ppin get', 'getPwm', '1']\n"
-    "],\n"
-    "'menus': {\n"
-      "'pin': ['1', '2', '3', '4'],\n"
-      "'dsetting': ['on', 'off'],\n"
-      "'ppin': ['1', '2']\n"
-     "},\n"
-    "url: 'https://github.com/savaka2/scratch-extensions/wiki/Link-Opener-extension'\n"
-  "};\n"
-  "ext._shutdown = function() {};"
-  "ext._getStatus = function() {"
-    "return {status:2, msg:'Ready'};"
-  "};"
-  "ext.getPwm = function(pin) {\n"
-  "};\n"
-  "ext.setPwm = function(pin, setting) {\n"
-  "};\n"
-  "ext.getDigital = function(pin) {\n"
-  "};\n"
-  "ext.setDigital = function(setting, url) {"
-    "alert(url);"
-    "var url = 'http://%%%%%%/gpio2/' + setting; "
-"console.log('setting' + setting);"
-"$.ajax({"
-"type: 'POST'," 
-"url: url," 
-"success: function(response) {"
-"alert('success');"
-"}"
-"});"
-"};"
-"ScratchExtensions.register('Link Opener', descriptor, ext);})();";
-
 String IpAddress2String(const IPAddress& ipAddress)
 {
   return String(ipAddress[0]) + String(".") +\
@@ -184,9 +138,9 @@ String IpAddress2String(const IPAddress& ipAddress)
 // specify the port to listen on as an argument
 WiFiServer server(80);
 Httpd httpd = Httpd();
-WiFiUDP udp = WiFiUDP();
-unsigned long lastUpdateTime = 0;
-unsigned long updatePeriod = 30000;
+//WiFiUDP udp = WiFiUDP();
+//unsigned long lastUpdateTime = 0;
+//unsigned long updatePeriod = 30000;
 
 void setup() {
   Serial.begin(115200);
@@ -195,8 +149,8 @@ void setup() {
   SPIFFS.begin();
   Serial.println("spiffs started");
 
+
   Configuration* config = new Configuration("/config.txt");
-Serial.println("ocnfig constructed");
   char* hostname = config->getConfigurationSetting("hostname");
   if(hostname != NULL) {
     Serial.print("got hostname: ");
@@ -206,13 +160,20 @@ Serial.println("ocnfig constructed");
     Serial.println("failed to retrieve hostname");
     hostname = "unknown";
   }
-  
-/*
-  File f = SPIFFS.open("/config.txt", "w");
-  if(f) {
-    f.println("hostname=SUN");
-    f.println("ip=192.168.2.102");
+
+  File f = SPIFFS.open("/test.html", "r");
+  if(!f) {
+    f = SPIFFS.open("/test.html", "w");
+    f.println(idx);
     f.close();
+  }
+
+/*
+  File f1 = SPIFFS.open("/config.txt", "w");
+  if(f1) {
+    f1.println("hostname=ONE");
+    f1.println("ip=192.168.2.102");
+    f1.close();
   }
 */
   /*
@@ -281,7 +242,7 @@ void loop() {
   // Check if a client has connected
   WiFiClient client = server.available();
   if (!client) {
-    unsigned long currentTime = millis();
+    //unsigned long currentTime = millis();
 
     /*
     // send a broadcast packet every thirty seconds
@@ -294,7 +255,6 @@ void loop() {
       udp.endPacket();
     }
     */
-
     return;
   }
 
@@ -316,7 +276,6 @@ void loop() {
 
   String url = String(req->getRequestUrl());
   String method = String(req->getRequestMethod());
-  Serial.println(url);
 
   //WiFi.localIP().toString().toCharArray(buf, 50);
 
@@ -338,19 +297,8 @@ void loop() {
       f.close();
     }
     // return the test page
-    if(url.indexOf("test.html") != -1) {
-      client.print(idx);
-    }
-    else if(url.indexOf("fileupload.html") != -1) {
+    if(url.indexOf("fileupload.html") != -1) {
       client.print(upload);
-    }
-    else if(url.indexOf("extension.js") != -1) {
-      char buf[50];
-      WiFi.localIP().toString().toCharArray(buf, 50);
-      String b = String(js);
-      String c = String(buf);
-      b.replace("%%%%%%", c);
-      client.print(b);
     }
     else {
       // GET the setting of a pin
@@ -379,7 +327,6 @@ void loop() {
       delete resp;
     }
     else {
-      // WRITE the state of a pin
       int pin = req->getPinNumber();
       int setting = req->getPinSetting();
       if(pin == 2 || pin == 12 || pin == 13 || pin == 14) {
@@ -411,24 +358,6 @@ void loop() {
         Serial.println(analogRead(pin));
       }
     }
-    /*
-    if(url.indexOf("/gpio") != -1) {
-      if(url.indexOf("/gpio2/0") != -1) {
-        digitalWrite(2, 0);
-        val = "high";
-        Response* resp = httpd.createResponse("200", digitalRead(2));
-        client.print(resp->getResponse());
-        delete resp;
-      }
-      else if(url.indexOf("/gpio2/1") != -1) {
-        digitalWrite(2, 1);
-        val = "low";
-        Response* resp = httpd.createResponse("200", digitalRead(2));
-        client.print(resp->getResponse());
-        delete resp;
-      }
-    }
-    */
   }
 
   delay(1);
