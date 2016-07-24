@@ -3,8 +3,8 @@
 #include <Httpd.h>
 #include <Configuration.h>
 
-const char* ssid = "";
-const char* password = "";
+const char* ssid = "tiles";
+const char* password = "peekaboo";
 
 const char *upload PROGMEM = "HTTP/1.1 200 OK\r\nContent-Type: text/html; charset=UTF-8\r\nAccess-Control-Allow-Origin: *\r\n\r\n"
 "<!DOCTYPE html>"
@@ -47,6 +47,7 @@ const char *upload PROGMEM = "HTTP/1.1 200 OK\r\nContent-Type: text/html; charse
 // specify the port to listen on as an argument
 WiFiServer server(80);
 Httpd httpd = Httpd();
+int dataDelay = 10;
 
 void setup() {
   Serial.begin(115200);
@@ -65,6 +66,12 @@ void setup() {
   else {
     Serial.println("failed to retrieve hostname");
     hostname = "unknown";
+  }
+  char* d = config->getConfigurationSetting("delay");
+  if(d != NULL) {
+    dataDelay = String(d).toInt();
+    Serial.print("data delay set to ");
+    Serial.println(d);
   }
 
   // prepare GPIO2
@@ -115,21 +122,20 @@ void loop() {
   while(!client.available()){
     delay(1);
   }
+
+  Serial.print("start ");
+  Serial.println(ESP.getFreeHeap());
   
   char* buffer = new char[4096];
   memset(buffer, 0, sizeof(buffer));
 
+  // small pause to wait for data to arrive
+  delay(dataDelay);
+
   int bytesavailable = client.available();
-
   client.readBytes(buffer, bytesavailable);
-  buffer[bytesavailable + 1] = '\0';
-
+  
   HttpRequest* req = httpd.parseRequest(buffer);
-
-  Serial.println(buffer);
-
-  Serial.print("after parse ");
-  Serial.println(ESP.getFreeHeap());
 
   delete buffer;
 
@@ -176,6 +182,8 @@ void loop() {
       if(fname != NULL) {
         File f = SPIFFS.open(fname, "w");
         f.print(req->getParameter("contents"));
+        Serial.print("contents ");
+        Serial.println(req->getParameter("contents"));
         f.close();
       }
       HttpResponse* resp = httpd.createResponse("200", 1);
@@ -226,4 +234,9 @@ void loop() {
 
   delay(1);
   delete req;
+  //client.flush();
+  //client.stop();
+  Serial.print("end ");
+  Serial.println(ESP.getFreeHeap());
+  Serial.println();
 } 
