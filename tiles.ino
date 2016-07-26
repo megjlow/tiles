@@ -3,8 +3,8 @@
 #include <Httpd.h>
 #include <Configuration.h>
 
-const char* ssid = "tiles";
-const char* password = "peekaboo";
+const char* ssid = "";
+const char* password = "";
 
 const char *upload PROGMEM = "HTTP/1.1 200 OK\r\nContent-Type: text/html; charset=UTF-8\r\nAccess-Control-Allow-Origin: *\r\n\r\n"
 "<!DOCTYPE html>"
@@ -149,6 +149,12 @@ void loop() {
     if(f) {
       HttpResponse* response = httpd.createResponse("200", 0);
       response->sendFile(client, f);
+      delete response;
+    }
+    else if(url.equals("/ping")) {
+      Serial.println("PING");
+      HttpResponse* response = httpd.createResponse("200", 0);
+      client.print(response->pingResponse());
       delete response;
     }
     else if(url.indexOf("gpio") == -1) {
