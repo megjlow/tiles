@@ -3,11 +3,10 @@
 #include <Httpd.h>
 #include <Configuration.h>
 
-const char* ssid = "";
-const char* password = "";
+const char* ssid = "tiles";
+const char* password = "peekaboo";
 
-const char *upload PROGMEM = "HTTP/1.1 200 OK\r\nContent-Type: text/html; charset=UTF-8\r\nAccess-Control-Allow-Origin: *\r\n\r\n"
-"<!DOCTYPE html>"
+const char *upload PROGMEM = "<!DOCTYPE html>"
 "<html lang=\"en-US\">"
  "<head>"
     "<meta charset=\"UTF-8\">" 
@@ -56,6 +55,12 @@ void setup() {
   SPIFFS.begin();
   Serial.println("spiffs started");
 
+  File f = SPIFFS.open("/fileupload.html", "r");
+  if(!f) {
+    f = SPIFFS.open("/fileupload.html", "w");
+    f.print(upload);
+    f.close();
+  }
 
   Configuration* config = new Configuration("/config.txt");
   char* hostname = config->getConfigurationSetting("hostname");
