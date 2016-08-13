@@ -2,11 +2,20 @@
 #include <FS.h>
 #include <Httpd.h>
 #include <Configuration.h>
+#include <WiFiUdp.h>
 
-const char* ssid = "tiles";
-const char* password = "peekaboo";
 
-const char *upload PROGMEM = "<!DOCTYPE html>"
+extern "C" {
+#include "user_interface.h"
+}
+
+// put your network ssid in here
+const char* ssid = "";
+// and your network password here
+const char* password = "";
+
+const char *upload PROGMEM = "HTTP/1.1 200 OK\r\nContent-Type: text/html; charset=UTF-8\r\nAccess-Control-Allow-Origin: *\r\n\r\n"
+"<!DOCTYPE html>"
 "<html lang=\"en-US\">"
  "<head>"
     "<meta charset=\"UTF-8\">" 
@@ -47,6 +56,20 @@ const char *upload PROGMEM = "<!DOCTYPE html>"
 WiFiServer server(80);
 Httpd httpd = Httpd();
 int dataDelay = 10;
+WiFiUDP udp;
+IPAddress broadcast;
+os_timer_t heartBeatTimer;
+
+// send a UDP broadcast on port 2048 with our chip id and IP address
+void heartBeat(void* pArg) {
+  Serial.println("advertise");
+  udp.beginPacket(broadcast, 2048);
+  udp.print("ESP-");
+  udp.print(ESP.getChipId());
+  udp.print(": ");
+  udp.print(WiFi.localIP());
+  udp.endPacket();
+}
 
 void setup() {
   Serial.begin(115200);
@@ -55,12 +78,6 @@ void setup() {
   SPIFFS.begin();
   Serial.println("spiffs started");
 
-  File f = SPIFFS.open("/fileupload.html", "r");
-  if(!f) {
-    f = SPIFFS.open("/fileupload.html", "w");
-    f.print(upload);
-    f.close();
-  }
 
   Configuration* config = new Configuration("/config.txt");
   char* hostname = config->getConfigurationSetting("hostname");
@@ -111,6 +128,12 @@ void setup() {
 
   // Print the IP address
   Serial.println(WiFi.localIP());
+
+  broadcast = ~WiFi.subnetMask() | WiFi.gatewayIP();
+  // got the network broadcast address, send a UDP broadcst with out IP address then start a timer to send this every 30 seconds
+  heartBeat(NULL);
+  os_timer_setfn(&heartBeatTimer, heartBeat, NULL);
+  os_timer_arm(&heartBeatTimer, 30000, true);
 
   delete config;
 }
