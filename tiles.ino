@@ -1,108 +1,79 @@
-#include <ESP8266WiFi.h>
-#include <FS.h>
 #include <Httpd.h>
-#include <Configuration.h>
-#include <WiFiUdp.h>
-
-
-extern "C" {
-#include "user_interface.h"
-}
+#include <Utils.h>
 
 // put your network ssid in here
 const char* ssid = "";
 // and your network password here
 const char* password = "";
 
-const char *upload PROGMEM = "HTTP/1.1 200 OK\r\nContent-Type: text/html; charset=UTF-8\r\nAccess-Control-Allow-Origin: *\r\n\r\n"
-"<!DOCTYPE html>"
-"<html lang=\"en-US\">"
- "<head>"
-    "<meta charset=\"UTF-8\">" 
-    "<title>File upload</title>"
-    "<script src='https://ajax.googleapis.com/ajax/libs/jquery/3.0.0/jquery.min.js'></script>"
-      "<script type='text/javascript'>"
-          "$(document).ready(function() {"
-            ""
-            "$('#upload').on('click', function(e) {"
-              "e.preventDefault();"
-              "var filename = $('#filename').val();"
-              "$.ajax({"
-                "type: \"POST\","
-                "async: false,"
-                "url: 'http://' + location.host + '/uploadfile',"
-                "data: {"
-                  "filename: filename,"
-                  "contents: $('#textarea').val()"
-                "},"
-                "success: function(response) {"
-                "}"
-              "});"
-            "});"
-            ""
-          "});"
-        "</script>"
-  "</head>"
-  "<body>"
-    "<label>Filename:</label><input type=\"text\" id=\"filename\" />"
-    "<textarea id=\"textarea\" rows=\"10\" columns=\"200\" style=\"display:block;\"></textarea>"
-    "<a href=\"javascript:void(0);\" id=\"upload\">Upload</a>"
-  "</body>"
-"</html>";
-
 
 // Create an instance of the server
 // specify the port to listen on as an argument
-WiFiServer server(80);
-Httpd httpd = Httpd();
-int dataDelay = 10;
-WiFiUDP udp;
-IPAddress broadcast;
-os_timer_t heartBeatTimer;
+//WiFiServer* server = new WiFiServer(80);
 
-// send a UDP broadcast on port 2048 with our chip id and IP address
-void heartBeat(void* pArg) {
-  Serial.println("advertise");
-  udp.beginPacket(broadcast, 2048);
-  udp.print("ESP-");
-  udp.print(ESP.getChipId());
-  udp.print(": ");
-  udp.print(WiFi.localIP());
-  udp.endPacket();
+httpd::sockets::ServerSocket* server = new httpd::sockets::ServerSocket(80);
+
+
+Httpd* h = new Httpd(server);
+int dataDelay = 10;
+//WiFiUDP udp;
+//IPAddress broadcast;
+
+void HandleRoot(HttpContext* context) {
+  context->response()->setResponseCode("HTTP/1.1 200 OK");
+  HttpHeader* header = new HttpHeader("Content-Type", "text/html; charset=utf-8");
+  context->response()->addHeader("Access-Control-Allow-Origin", "*");
+  context->response()->addHeader(header);
+  context->response()->setBody("<html><head></head><body>ASDF ASDF</body></html>");
+}
+
+void Pin(HttpContext* context) {
+  String s = String(context->request()->url());
+  int i = s.indexOf("gpio");
+  String p = s.substring(i + 4);
+  int pin = p.toInt();
+
+  if(strcmp(context->request()->method(), "POST") == 0) {
+    Array<char>* arr = Utils::tokeniseString(context->request()->url(), "/");
+    // first element should be gpioX, second should be setting
+    if(arr->count() >= 2) {
+      String s = String(arr->get(1));
+      int setting = s.toInt();
+      // we're treating 2, 12, 13, 14 as digital pins and 4, 5 as pwm pins
+      if(pin == 2 || pin == 12 || pin == 13 || pin == 14) {
+        digitalWrite(pin, setting);
+      }
+      else if(pin == 4 || pin == 5) {
+        analogWrite(pin, setting);
+      }
+    }
+    delete arr;
+  }
+  context->response()->setResponseCode("HTTP/1.1 200 OK");
+  context->response()->addHeader("Content-Type", "application/json");
+  context->response()->addHeader("Access-Control-Allow-Origin", "*");
+  int pinSetting = 0;
+  if(pin == 2 || pin == 12 || pin == 13 || pin == 14) {
+    pinSetting = digitalRead(pin);
+  }
+  else if(pin == 4 || pin == 5) {
+    pinSetting = analogRead(pin);
+  }
+
+  String b = String("{\"value\":\"");
+  b.concat(pinSetting);
+  b.concat("\"}");
+  context->response()->setBody(b);
 }
 
 void setup() {
   Serial.begin(115200);
   delay(10);
 
-  SPIFFS.begin();
-  Serial.println("spiffs started");
-
-
-  Configuration* config = new Configuration("/config.txt");
-  char* hostname = config->getConfigurationSetting("hostname");
-  if(hostname != NULL) {
-    Serial.print("got hostname: ");
-    Serial.println(hostname);
-  }
-  else {
-    Serial.println("failed to retrieve hostname");
-    hostname = "unknown";
-  }
-  char* d = config->getConfigurationSetting("delay");
-  if(d != NULL) {
-    dataDelay = String(d).toInt();
-    Serial.print("data delay set to ");
-    Serial.println(d);
-  }
-
-  // prepare GPIO2
   pinMode(2, OUTPUT);
-  digitalWrite(2, 0);
   pinMode(12, OUTPUT);
   pinMode(13, OUTPUT);
   pinMode(14, OUTPUT);
-
   pinMode(4, OUTPUT);
   pinMode(5, OUTPUT);
 
@@ -112,7 +83,6 @@ void setup() {
   Serial.print("Connecting to ");
   Serial.println(ssid);
 
-  WiFi.hostname(hostname);
   WiFi.begin(ssid, password);
 
   while (WiFi.status() != WL_CONNECTED) {
@@ -123,154 +93,23 @@ void setup() {
   Serial.println("WiFi connected");
 
   // Start the server
-  server.begin();
+  h->begin();
   Serial.println("Server started");
 
   // Print the IP address
   Serial.println(WiFi.localIP());
 
-  broadcast = ~WiFi.subnetMask() | WiFi.gatewayIP();
-  // got the network broadcast address, send a UDP broadcst with out IP address then start a timer to send this every 30 seconds
-  heartBeat(NULL);
-  os_timer_setfn(&heartBeatTimer, heartBeat, NULL);
-  os_timer_arm(&heartBeatTimer, 30000, true);
-
-  delete config;
+  h->RegisterCallback("/index.html", (Callback)HandleRoot);
+  h->RegisterCallback("/gpio", (Callback)Pin, true);
+ 
 }
 
+
 void loop() {
-  // Check if a client has connected
-  WiFiClient client = server.available();
-  if (!client) {
-    return;
-  }
+  h->handleClient();
 
-  // Wait until the client sends some data
-  Serial.println("new client");
-  while(!client.available()){
-    delay(1);
-  }
-
-  Serial.print("start ");
-  Serial.println(ESP.getFreeHeap());
-  
-  char* buffer = new char[4096];
-  memset(buffer, 0, sizeof(buffer));
-
-  // small pause to wait for data to arrive
-  delay(dataDelay);
-
-  int bytesavailable = client.available();
-  client.readBytes(buffer, bytesavailable);
-  
-  HttpRequest* req = httpd.parseRequest(buffer);
-
-  delete buffer;
-
-  String url = String(req->getRequestUrl());
-  String method = String(req->getRequestMethod());
-
-
-  if(method.indexOf("GET") != -1) {
-    
-    File f = SPIFFS.open(url, "r");
-    if(f) {
-      HttpResponse* response = httpd.createResponse("200", 0);
-      response->sendFile(client, f);
-      delete response;
-    }
-    else if(url.equals("/ping")) {
-      Serial.println("PING");
-      HttpResponse* response = httpd.createResponse("200", 0);
-      client.print(response->pingResponse());
-      delete response;
-    }
-    else if(url.indexOf("gpio") == -1) {
-      Serial.println("not found");
-      HttpResponse* response = httpd.createResponse("404", 0);
-      client.print(response->getResponse());
-      delete response;
-    }
-    else {
-      // GET the setting of a pin
-      int pin = req->getPinNumber();
-      int setting = req->getPinSetting();
-      if(pin == 2 || pin == 12 || pin == 13 || pin == 14) {
-        // digital pins
-        HttpResponse* resp = httpd.createResponse("200", digitalRead(pin));
-        client.print(resp->getResponse());
-        delete resp;
-      }
-      else if(pin == 4 || pin == 5) {
-        // pwm pins
-        HttpResponse* resp = httpd.createResponse("200", analogRead(pin));
-        client.print(resp->getResponse());
-        delete resp;
-      }
-    }
-  }
-  else if(method.indexOf("POST") != -1) {
-    Serial.println("post");
-    if(url.indexOf("/uploadfile") != -1) {
-      char* fname = req->getParameter("filename");
-      if(fname != NULL) {
-        File f = SPIFFS.open(fname, "w");
-        f.print(req->getParameter("contents"));
-        Serial.print("contents ");
-        Serial.println(req->getParameter("contents"));
-        f.close();
-      }
-      HttpResponse* resp = httpd.createResponse("200", 1);
-      client.print(resp->getResponse());
-      delete resp;
-    }
-    else {
-      int pin = req->getPinNumber();
-      int setting = req->getPinSetting();
-      if(pin == 2 || pin == 12 || pin == 13 || pin == 14) {
-        /*
-        Serial.print("setting digital pin #");
-        Serial.print(pin);
-        Serial.print(" to ");
-        Serial.println(setting);
-        */
-        digitalWrite(pin, setting);
-        HttpResponse* resp = httpd.createResponse("200", digitalRead(pin));
-        client.print(resp->getResponse());
-        delete resp;
-        /*
-        Serial.print("digital pin #");
-        Serial.print(pin);
-        Serial.print(" is set to ");
-        Serial.println(digitalRead(pin));
-        */
-      }
-      else if(pin == 4 || pin == 5) {
-        /*
-        Serial.print("setting pwm pin #");
-        Serial.print(pin);
-        Serial.print(" to ");
-        Serial.println(setting);
-        */
-        analogWrite(pin, setting); 
-        HttpResponse* resp = httpd.createResponse("200", analogRead(pin));
-        client.print(resp->getResponse());
-        delete resp;
-        /*
-        Serial.print("pwm pin #");
-        Serial.print(pin);
-        Serial.print(" is set to ");
-        Serial.println(analogRead(pin));
-        */
-      }
-    }
-  }
-
-  delay(1);
-  delete req;
-  //client.flush();
-  //client.stop();
-  Serial.print("end ");
+/*
   Serial.println(ESP.getFreeHeap());
   Serial.println();
+  */
 } 
