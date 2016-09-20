@@ -6,9 +6,9 @@
 #endif
 
 // put your network ssid in here
-const char* ssid = "";
+const char* ssid = "tiles";
 // and your network password here
-const char* password = "";
+const char* password = "peekaboo";
 
 
 // Create an instance of the server
@@ -128,20 +128,17 @@ void setup() {
 
 void loop() {
   h->handleClient();
-
-  /*
-    Serial.println(ESP.getFreeHeap());
-    Serial.println();
-  */
 }
 
 #ifdef ARDUINO_STM32_FEATHER
 bool connectAP(void)
 {
   // Attempt to connect to an AP
-  Serial.print("Please wait while connecting to: '" WLAN_SSID "' ... ");
+  Serial.print("Please wait while connecting to: '");
+  Serial.print(ssid);
+  Serial.print(" ... ");
 
-  if ( Feather.connect(ssid, password, ENC_TYPE_AUTO) )
+  if ( Feather.connect(ssid, password, ENC_TYPE_WPA2_AES) )
   {
     Serial.println("Connected!");
   }
