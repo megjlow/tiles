@@ -24,6 +24,8 @@ int dataDelay = 10;
 //IPAddress broadcast;
 
 void HandleRoot(HttpContext* context) {
+  char* url = context->request()->url();
+  char* method = context->request()->method();
   context->response()->setResponseCode("HTTP/1.1 200 OK");
   HttpHeader* header = new HttpHeader("Content-Type", "text/html; charset=utf-8");
   context->response()->addHeader("Access-Control-Allow-Origin", "*");
