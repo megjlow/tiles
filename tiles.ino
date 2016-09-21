@@ -48,6 +48,12 @@ void Pin(HttpContext* context) {
         digitalWrite(pin, setting);
       }
       else if (pin == 4 || pin == 5) {
+        if(setting > 1023) {
+          setting = 1023;
+        }
+        if(setting < 0) {
+          setting = 0;
+        }
         analogWrite(pin, setting);
       }
     }
