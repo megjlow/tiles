@@ -8,18 +8,48 @@ extern "C" {
 #include "user_interface.h"
 }
 
-char* PROGMEM configHtml = "<html charset=\"utf-8\">"
-"<head></head>"
-"<body>"
-"<form action=\"/config.html\" method=\"post\">"
-"<label for=\"name\">NAME</label><input type=\"text\" id=\"name\" name=\"name\" /> <br />"
-"<label for=\"ssid\">SSID</label><input type=\"text\" id=\"ssid\" name=\"ssid\" /> <br />"
-"<label for=\"password\">PASSWORD</label><input type=\"text\" id=\"password\" name=\"password\" /><br />"
-"<input type=\"submit\" />"
-"</form>"
-"</body>"
-"</html>";
+const char configHtml[] = R"=====(<html charset="utf-8">
+<head>
+<style type="text/css">
+body { background-image: url(\"/images/tiles.jpg\"); background-size: cover }
+.page { display: table; width: 450px; height: 100%; margin-left: auto; margin-right: auto; }
+.main-form { display: table-cell; vertical-align: middle; width: 450px; }
+.inner { background-color: lightgray; opacity: 0.7; padding: 30px 0 30px 0; border-radius: 10px; }
+.heading { text-align: center; margin-bottom: 10px; }
+.heading span { font-size: 1.5em; }
+.field-input { display: block; position: relative; margin: 0 5px 30px 5px; }
+.field-input label { display: inline-block; margin-top: 8px; }
+.field-input input { position: absolute; right: 0px; }
+.submit-button { display: block; margin-left: auto; margin-right: auto; }
+</style>
+</head>
+<body>
+<form action="/config.html" method="post">
+<div class="page">
+<div class="main-form">
+<div class="inner">
+<div class="heading"><span>Network Settings</span></div>
+<span class="field-input"><label for="name">NAME</label><input type="text" id="name" name="name" /></span>
+<span class="field-input"><label for="ssid">SSID</label><input type="text" id="ssid" name="ssid" /></span>
+<span class="field-input"><label for="password">PASSWORD</label><input type="text" id="password" name="password" /></span>
+<button class="submit-button" type="submit">Set</button>
+</div>
+</div>
+</div>
+</form>
+</body>
+</html>)=====";
 
+const char uploadHtml[] = R"=====(<html charset="utf-8">
+<head>
+</head>
+<body>
+<form action="/upload.html" method="post">
+<input type="file" name="file" />
+<button class="submit-button" type="submit">Upload</button>
+</form>
+</body>
+</html>)=====";
 
 
 #ifdef ARDUINO_STM32_FEATHER
@@ -28,9 +58,9 @@ char* PROGMEM configHtml = "<html charset=\"utf-8\">"
 
 
 // put your network ssid in here
-const char* ssid = "tiles";
+const char* ssid = "darkblack";
 // and your network password here
-const char* password = "peekaboo";
+const char* password = "peekaboo123";
 
 
 httpd::sockets::ServerSocket* server = new httpd::sockets::ServerSocket(80);
@@ -57,7 +87,6 @@ void HandleRoot(HttpContext* context) {
   char* method = context->request()->method();
   
   context->response()->setResponseCode("HTTP/1.1 200 OK");
-  context->response()->addHeader("Access-Control-Allow-Origin", "*");
   context->response()->addHeader("Content-Type", "text/html; charset=utf-8");
   context->response()->setBody("<html><head></head><body>It works!</body></html>");
 }
@@ -92,7 +121,6 @@ void Pin(HttpContext* context) {
   }
   context->response()->setResponseCode("HTTP/1.1 200 OK");
   context->response()->addHeader("Content-Type", "application/json");
-  context->response()->addHeader("Access-Control-Allow-Origin", "*");
   int pinSetting = 0;
   if (pin == 2 || pin == 12 || pin == 13 || pin == 14) {
     pinSetting = digitalRead(pin);
@@ -111,9 +139,7 @@ void Pin(HttpContext* context) {
 void Config(HttpContext* context) {
   if(strcmp(context->request()->method(), "GET") == 0) {
     context->response()->setResponseCode("HTTP/1.1 200 OK");
-    HttpHeader* header = new HttpHeader("Content-Type", "text/html; charset=utf-8");
-    context->response()->addHeader("Access-Control-Allow-Origin", "*");
-    context->response()->addHeader(header);
+    context->response()->addHeader("Content-Type", "text/html; charset=utf-8");
     context->response()->setBody(configHtml);
   }
   else {
@@ -129,8 +155,6 @@ void Config(HttpContext* context) {
       f.print("name="); f.print(name); f.print("\r\n");
       f.close();
       context->response()->setResponseCode("HTTP/1.1 200 OK");
-      context->response()->addHeader("Content-Type", "text/html; charset=utf-8");
-      context->response()->addHeader("Access-Control-Allow-Origin", "*");
       context->response()->setBody("<html charset=\"utf-8\"><head></head><body>Updated</body></html>");
     }
     else {
@@ -140,10 +164,37 @@ void Config(HttpContext* context) {
   }
 }
 
-void Root(HttpContext* context) {
+void Upload(HttpContext* context) {
+  Serial.println("here");
+  delay(100);
+  Serial.println(uploadHtml);
+  Serial.println("and here");
+  delay(250);
+  if(strcmp(context->request()->method(), "GET") == 0) {
+    context->response()->setResponseCode("HTTP/1.1 200 OK");
+    context->response()->addHeader("Content-Type", "text/html");
+    context->response()->setBody(uploadHtml);
+  }
+  else {
+    
+  }
+}
+
+void Images(HttpContext* context) {
+  String fname = String(context->request()->url());
+  File f = SPIFFS.open(fname, "r");
+  if(!f) {
+    FourOhFour(context);
+  }
+  else {
+    context->response()->sendFile(f);
+  }
+  Serial.print("fname "); Serial.println(fname);
+}
+
+void FourOhFour(HttpContext* context) {
   context->response()->setResponseCode("HTTP/1.1 404 Not Found");
   context->response()->addHeader("Content-Type", "text/html; charset=utf-8");
-  context->response()->addHeader("Access-Control-Allow-Origin", "*");
   context->response()->setBody("<html charset=\"utf-8\"><head></head><body>404 Not Found</body></html>");
 }
 
@@ -257,10 +308,14 @@ void setup() {
   os_timer_setfn(&heartBeatTimer, heartBeat, NULL);
   os_timer_arm(&heartBeatTimer, 60000, true);
 
+  h->addGlobalHeader("Access-Control-Allow-Origin", "*");
+
   h->RegisterCallback("/index.html", (Callback)HandleRoot);
   h->RegisterCallback("/gpio", (Callback)Pin, true);
   h->RegisterCallback("/config.html", (Callback)Config);
-  h->RegisterCallback("/", (Callback)Root, true); // this is the last one that will be checked and should match anything
+  h->RegisterCallback("/upload.html", (Callback)Upload);
+  h->RegisterCallback("/images", (Callback)Images, true);
+  h->RegisterCallback("/", (Callback)FourOhFour, true); // this is the last one that will be checked and should match anything
 
   // Start the server
   h->begin();
