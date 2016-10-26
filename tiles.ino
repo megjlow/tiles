@@ -11,7 +11,7 @@ extern "C" {
 const char configHtml[] = R"=====(<html charset="utf-8">
 <head>
 <style type="text/css">
-body { background-image: url(\"/images/tiles.jpg\"); background-size: cover }
+body { background-image: url("/images/tiles.jpg"); background-size: cover }
 .page { display: table; width: 450px; height: 100%; margin-left: auto; margin-right: auto; }
 .main-form { display: table-cell; vertical-align: middle; width: 450px; }
 .inner { background-color: lightgray; opacity: 0.7; padding: 30px 0 30px 0; border-radius: 10px; }
@@ -58,9 +58,9 @@ const char uploadHtml[] = R"=====(<html charset="utf-8">
 
 
 // put your network ssid in here
-const char* ssid = "darkblack";
+const char* ssid = "tiles";
 // and your network password here
-const char* password = "peekaboo123";
+const char* password = "peekaboo";
 
 
 httpd::sockets::ServerSocket* server = new httpd::sockets::ServerSocket(80);
@@ -92,6 +92,7 @@ void HandleRoot(HttpContext* context) {
 }
 
 void Pin(HttpContext* context) {
+  int startTime = millis();
   String s = String(context->request()->url());
   int i = s.indexOf("gpio");
   String p = s.substring(i + 4);
@@ -133,6 +134,9 @@ void Pin(HttpContext* context) {
   b.concat(pinSetting);
   b.concat("\"}");
   context->response()->setBody(b);
+
+  int endTime = millis();
+  Serial.print("Pin elapsed: "); Serial.println(endTime - startTime);
 }
 
 
