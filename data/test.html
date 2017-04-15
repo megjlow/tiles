@@ -1,0 +1,132 @@
+<html charset="utf-8">
+ <head>
+    <script src='https://ajax.googleapis.com/ajax/libs/jquery/3.0.0/jquery.min.js'></script>
+    <script type='text/javascript'>
+    
+      $(document).ready(function() {
+        
+        var webSocket;
+        
+        function onOpen(evt) {
+		    console.log('onOpen');
+		  }
+		  
+		function onMessage(evt) {
+			alert(evt.data);
+		}
+		
+		$('#send').on('click', function(e) {
+			e.preventDefault();
+			webSocket.send($('#message').val());
+		});
+        
+        $('#connectsocket').on('click', function(e) {
+        alert('connect');
+        	e.preventDefault();
+        	var ip = $('#ipaddress').val();
+        	webSocket = new WebSocket('ws://' + ip + '/', ['arduino']);
+        	
+        	webSocket.onopen = function(evt) { onOpen(evt) };
+    		//websocket.onclose = function(evt) { onClose(evt) };
+    		websocket.onmessage = function(evt) { onMessage(evt) };
+    		//websocket.onerror = function(evt) { onError(evt) };
+        });
+        
+        //var connection = new WebSocket('ws://10.11.2.1:81/', ['arduino']);
+
+        
+        $('.on').on('click', function(e) {
+          e.preventDefault();
+          var ip = $('#ipaddress').val();
+          var pin = $(e.target).data('pin');
+          $.ajax({
+            type: 'POST',
+            dataType: 'json',
+            url: 'http://' + ip + '/gpio' + pin + '/1',
+            success: function(response) {
+              if(response.value == '1') {
+                $(".state[data-pin='" + pin + "']").text('ON');
+              }
+              else {
+                $(".state[data-pin='" + pin + "']").text('OFF');
+              }
+            }
+          });
+        });
+        
+        $('.off').on('click', function(e) {
+          e.preventDefault();
+          var ip = $('#ipaddress').val();
+          var pin = $(e.target).data('pin');
+          $.ajax({
+            type: 'POST',
+            url: 'http://' + ip + '/gpio' + pin + '/0',
+            success: function(response) {
+              if(response.value == '0') {
+                $(".state[data-pin='" + pin + "']").text('OFF');
+              }
+              else {
+                $(".state[data-pin='" + pin + "']").text('ON');
+              }
+            }
+          });
+        });
+        
+         $('.setpower').on('click', function(e) {
+           e.preventDefault();
+           var pin = $(e.target).data('pin');
+           var ip = $('#ipaddress').val();
+           var level = $(".setting[data-pin='" + pin + "']").val();
+           $.ajax({
+            type: 'POST',
+            url: 'http://' + ip + '/gpio' + pin + '/' + level,
+            success: function(response) {
+              // pwm pins always return 0
+            }
+          });
+         });
+         
+      });
+    </script>
+    
+    <style type="text/css">
+    	.pin {
+    		margin: 20px;
+    	}
+    	.on {
+    		padding-right: 20px;
+    	}
+    	.off {
+    		padding-right: 20px;
+    	}
+    	.setpower {
+    		padding-right: 20px;
+    	}
+    </style>
+  </head>
+  <body>
+  	<label for="ipaddress">IPAddress</label>
+  	<input type="text" id="ipaddress" value="192.168.2.102" /><br /><br />
+  	<a href="javascript:void(0);" id="connectsocket">Connect socket</a><br /><br />
+  	<input type="text" id="message" /><br /> <br />
+  	<a href="javascript:void(0);" id="send">send</a><br /> <br />
+  	<div class="pin">
+  		Pin 2 <a href="javascript:void(0);" class="on" data-pin="2">ON</a> <a href="javascript:void(0);" class="off" data-pin="2">OFF</a> <label class="state" data-pin="2">OFF</label> Pin 2 is reversed on some boards
+  	</div>
+  	<div class="pin">
+  		Pin 12 <a href="javascript:void(0);" class="on" data-pin="12">ON</a> <a href="javascript:void(0);" class="off" data-pin="12">OFF</a> <label class="state" data-pin="12">OFF</label>
+  	</div>
+  	<div class="pin">
+  		Pin 13 <a href="javascript:void(0);" class="on" data-pin="13">ON</a> <a href="javascript:void(0);" class="off" data-pin="13">OFF</a> <label class="state" data-pin="13">OFF</label>
+  	</div>
+  	<div class="pin">
+  		Pin 14 <a href="javascript:void(0);" class="on" data-pin="14">ON</a> <a href="javascript:void(0);" class="off" data-pin="14">OFF</a> <label class="state" data-pin="14">OFF</label>
+  	</div>
+  	<div class="pin">
+	    Pin 4 (PWM) <a href="javascript:void(0);" class="setpower" data-pin="4">Set</a><input type="text" class="setting" data-pin="4" />
+    </div>
+    <div class="pin">
+	    Pin 5 (PWM) <a href="javascript:void(0);" class="setpower" data-pin="5">Set</a><input type="text" class="setting" data-pin="5" />
+    </div>
+  </body>
+</html>

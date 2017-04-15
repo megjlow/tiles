@@ -58,10 +58,11 @@ const char uploadHtml[] = R"=====(<html charset="utf-8">
 
 
 // put your network ssid in here
-const char* ssid = "tiles";
+const char* ssid = "darkblack";
 // and your network password here
-const char* password = "peekaboo";
+const char* password = "peekaboo123";
 
+using namespace httpd;
 
 httpd::sockets::ServerSocket* server = new httpd::sockets::ServerSocket(80);
 
@@ -193,6 +194,20 @@ void Images(HttpContext* context) {
   else {
     context->response()->sendFile(f);
   }
+  f.close();
+  Serial.print("fname "); Serial.println(fname);
+}
+
+void StaticPages(HttpContext* context) {
+  String fname = String(context->request()->url());
+  File f = SPIFFS.open(fname, "r");
+  if(!f) {
+    FourOhFour(context);
+  }
+  else {
+    context->response()->sendFile(f);
+  }
+  f.close();
   Serial.print("fname "); Serial.println(fname);
 }
 
@@ -200,6 +215,10 @@ void FourOhFour(HttpContext* context) {
   context->response()->setResponseCode("HTTP/1.1 404 Not Found");
   context->response()->addHeader("Content-Type", "text/html; charset=utf-8");
   context->response()->setBody("<html charset=\"utf-8\"><head></head><body>404 Not Found</body></html>");
+}
+
+void SocketOnMessage(SocketContext* context) {
+  context->sendMessage("message");
 }
 
 void setup() {
@@ -319,7 +338,10 @@ void setup() {
   h->RegisterCallback("/config.html", (Callback)Config);
   h->RegisterCallback("/upload.html", (Callback)Upload);
   h->RegisterCallback("/images", (Callback)Images, true);
+  h->RegisterCallback("/", (Callback)StaticPages, true);
   h->RegisterCallback("/", (Callback)FourOhFour, true); // this is the last one that will be checked and should match anything
+
+  h->RegisterSocketCallback((SocketCallback)SocketOnMessage); // callback handler for websocket messages
 
   // Start the server
   h->begin();
