@@ -8,37 +8,6 @@ extern "C" {
 #include "user_interface.h"
 }
 
-const char configHtml[] = R"=====(<html charset="utf-8">
-<head>
-<style type="text/css">
-body { background-image: url("/images/tiles.jpg"); background-size: cover }
-.page { display: table; width: 450px; height: 100%; margin-left: auto; margin-right: auto; }
-.main-form { display: table-cell; vertical-align: middle; width: 450px; }
-.inner { background-color: lightgray; opacity: 0.7; padding: 30px 0 30px 0; border-radius: 10px; }
-.heading { text-align: center; margin-bottom: 10px; }
-.heading span { font-size: 1.5em; }
-.field-input { display: block; position: relative; margin: 0 5px 30px 5px; }
-.field-input label { display: inline-block; margin-top: 8px; }
-.field-input input { position: absolute; right: 0px; }
-.submit-button { display: block; margin-left: auto; margin-right: auto; }
-</style>
-</head>
-<body>
-<form action="/config.html" method="post">
-<div class="page">
-<div class="main-form">
-<div class="inner">
-<div class="heading"><span>Network Settings</span></div>
-<span class="field-input"><label for="name">NAME</label><input type="text" id="name" name="name" /></span>
-<span class="field-input"><label for="ssid">SSID</label><input type="text" id="ssid" name="ssid" /></span>
-<span class="field-input"><label for="password">PASSWORD</label><input type="text" id="password" name="password" /></span>
-<button class="submit-button" type="submit">Set</button>
-</div>
-</div>
-</div>
-</form>
-</body>
-</html>)=====";
 
 const char uploadHtml[] = R"=====(<html charset="utf-8">
 <head>
@@ -142,30 +111,23 @@ void Pin(HttpContext* context) {
 
 
 void Config(HttpContext* context) {
-  if(strcmp(context->request()->method(), "GET") == 0) {
+  char* ssid = context->request()->getParameter("ssid");
+  char* pass = context->request()->getParameter("password");
+  char* name = context->request()->getParameter("name");
+  if(ssid != NULL && name != NULL) {
+    File f = SPIFFS.open("/config.txt", "w+");
+    f.print("ssid="); f.print(ssid); f.print("\r\n");
+    if(pass != NULL) {
+      f.print("password="); f.print(password); f.print("\r\n");
+    }
+    f.print("name="); f.print(name); f.print("\r\n");
+    f.close();
     context->response()->setResponseCode("HTTP/1.1 200 OK");
-    context->response()->addHeader("Content-Type", "text/html; charset=utf-8");
-    context->response()->setBody(configHtml);
+    context->response()->setBody("<html charset=\"utf-8\"><head></head><body>Updated</body></html>");
   }
   else {
-    char* ssid = context->request()->getParameter("ssid");
-    char* pass = context->request()->getParameter("password");
-    char* name = context->request()->getParameter("name");
-    if(ssid != NULL && name != NULL) {
-      File f = SPIFFS.open("/config.txt", "w+");
-      f.print("ssid="); f.print(ssid); f.print("\r\n");
-      if(pass != NULL) {
-        f.print("password="); f.print(password); f.print("\r\n");
-      }
-      f.print("name="); f.print(name); f.print("\r\n");
-      f.close();
-      context->response()->setResponseCode("HTTP/1.1 200 OK");
-      context->response()->setBody("<html charset=\"utf-8\"><head></head><body>Updated</body></html>");
-    }
-    else {
-      context->response()->setResponseCode("HTTP/1.1 400 Bad Request");
-      context->response()->setBody("<html charset=\"utf-8\"><head></head><body>Missing Parameter(s)</body></html>");
-    }
+    context->response()->setResponseCode("HTTP/1.1 400 Bad Request");
+    context->response()->setBody("<html charset=\"utf-8\"><head></head><body>Missing Parameter(s)</body></html>");
   }
 }
 
@@ -218,6 +180,7 @@ void FourOhFour(HttpContext* context) {
 }
 
 void SocketOnMessage(SocketContext* context) {
+  Serial.println(context->getMessage());
   context->sendMessage("message");
 }
 
@@ -334,8 +297,8 @@ void setup() {
   h->addGlobalHeader("Access-Control-Allow-Origin", "*");
 
   h->RegisterCallback("/index.html", (Callback)HandleRoot);
+  h->RegisterCallback("/config.html", "POST", (Callback)Config);
   h->RegisterCallback("/gpio", (Callback)Pin, true);
-  h->RegisterCallback("/config.html", (Callback)Config);
   h->RegisterCallback("/upload.html", (Callback)Upload);
   h->RegisterCallback("/images", (Callback)Images, true);
   h->RegisterCallback("/", (Callback)StaticPages, true);

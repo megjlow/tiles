@@ -21,7 +21,6 @@
 		});
         
         $('#connectsocket').on('click', function(e) {
-        alert('connect');
         	e.preventDefault();
         	var ip = $('#ipaddress').val();
         	webSocket = new WebSocket('ws://' + ip + '/', ['arduino']);
