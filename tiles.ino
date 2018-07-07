@@ -33,9 +33,9 @@ const char uploadHtml[] = R"=====(<html charset="utf-8">
 
 
 // put your network ssid in here
-const char* ssid = "darkblack";
+const char* ssid = "tiles";
 // and your network password here
-const char* password = "peekaboo123";
+const char* password = "peekaboo";
 
 using namespace httpd;
 
@@ -701,14 +701,14 @@ void interrupt13() {
 
 void setup() {
   Serial.begin(115200);
-  /*
+  
   pinMode(2, OUTPUT);
   pinMode(4, OUTPUT);
   pinMode(5, OUTPUT);
   pinMode(12, OUTPUT);
   pinMode(13, OUTPUT);
   pinMode(14, OUTPUT);
-  */
+  
 #ifdef ARDUINO_STM32_FEATHER
 // code for connecting using the adafruit wiced feather
   while (!Serial) delay(1);
@@ -822,13 +822,13 @@ void setup() {
 
   h->RegisterSocketCallback((SocketCallback)SocketOnMessage); // callback handler for websocket messages
 
-  Firmata.setFirmwareVersion(FIRMATA_FIRMWARE_MAJOR_VERSION, FIRMATA_FIRMWARE_MINOR_VERSION);
+  //Firmata.setFirmwareVersion(FIRMATA_FIRMWARE_MAJOR_VERSION, FIRMATA_FIRMWARE_MINOR_VERSION);
         
-  Firmata.attach(ANALOG_MESSAGE, analogWriteCallback);
-  Firmata.attach(START_SYSEX, sysexCallback);
-  Firmata.attach(REPORT_DIGITAL, reportDigitalCallback);
-  Firmata.attach(SET_PIN_MODE, setPinModeCallback);
-  Firmata.attach(SET_DIGITAL_PIN_VALUE, setPinValueCallback);
+  //Firmata.attach(ANALOG_MESSAGE, analogWriteCallback);
+  //Firmata.attach(START_SYSEX, sysexCallback);
+  //Firmata.attach(REPORT_DIGITAL, reportDigitalCallback);
+  //Firmata.attach(SET_PIN_MODE, setPinModeCallback);
+  //Firmata.attach(SET_DIGITAL_PIN_VALUE, setPinValueCallback);
 
   // Start the server
   h->begin();
@@ -841,9 +841,9 @@ void setup() {
 
   //pinMode(D6, INPUT);
 
-  reportDigitalCallback(1, 1);
-  reportDigitalCallback(2, 1);
-  reportDigitalCallback(3, 1);
+  //reportDigitalCallback(1, 1);
+  //reportDigitalCallback(2, 1);
+  //reportDigitalCallback(3, 1);
   /*
 Digital pins 0—15 can be INPUT, OUTPUT, or INPUT_PULLUP. Pin 16 can be INPUT, OUTPUT or INPUT_PULLDOWN_16. At startup, pins are configured as INPUT.
 
