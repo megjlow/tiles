@@ -11,7 +11,7 @@ extern "C" {
 
 #define DEBUG
 
-// http://scratchx.org?url=https://megjlow.github.io/extensionloader.js?ip=192.168.2.105#scratch
+// http://scratchx.org?url=https://megjlow.github.io/extensionloader.js?ip=192.168.10.211#scratch
 // https://megjlow.github.io/socket.js?ip=192.168.2.105
 
 
@@ -702,12 +702,12 @@ void interrupt13() {
 void setup() {
   Serial.begin(115200);
   
-  pinMode(2, OUTPUT);
-  pinMode(4, OUTPUT);
-  pinMode(5, OUTPUT);
-  pinMode(12, OUTPUT);
-  pinMode(13, OUTPUT);
-  pinMode(14, OUTPUT);
+  //pinMode(2, OUTPUT);
+  //pinMode(4, OUTPUT);
+  //pinMode(5, OUTPUT);
+  //pinMode(12, OUTPUT);
+  //pinMode(13, OUTPUT);
+  //pinMode(14, OUTPUT);
   
 #ifdef ARDUINO_STM32_FEATHER
 // code for connecting using the adafruit wiced feather
@@ -822,13 +822,13 @@ void setup() {
 
   h->RegisterSocketCallback((SocketCallback)SocketOnMessage); // callback handler for websocket messages
 
-  //Firmata.setFirmwareVersion(FIRMATA_FIRMWARE_MAJOR_VERSION, FIRMATA_FIRMWARE_MINOR_VERSION);
+  Firmata.setFirmwareVersion(FIRMATA_FIRMWARE_MAJOR_VERSION, FIRMATA_FIRMWARE_MINOR_VERSION);
         
-  //Firmata.attach(ANALOG_MESSAGE, analogWriteCallback);
-  //Firmata.attach(START_SYSEX, sysexCallback);
-  //Firmata.attach(REPORT_DIGITAL, reportDigitalCallback);
-  //Firmata.attach(SET_PIN_MODE, setPinModeCallback);
-  //Firmata.attach(SET_DIGITAL_PIN_VALUE, setPinValueCallback);
+  Firmata.attach(ANALOG_MESSAGE, analogWriteCallback);
+  Firmata.attach(START_SYSEX, sysexCallback);
+  Firmata.attach(REPORT_DIGITAL, reportDigitalCallback);
+  Firmata.attach(SET_PIN_MODE, setPinModeCallback);
+  Firmata.attach(SET_DIGITAL_PIN_VALUE, setPinValueCallback);
 
   // Start the server
   h->begin();
