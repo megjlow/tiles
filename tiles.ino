@@ -3,7 +3,7 @@
 #include <WiFiUdp.h>
 #include <FS.h>
 #include <Configuration.h>
-#include <Firmata.h>
+#include <firmata/WSFirmata.h>
 
 extern "C" {
 #include "user_interface.h"
@@ -33,9 +33,9 @@ const char uploadHtml[] = R"=====(<html charset="utf-8">
 
 
 // put your network ssid in here
-const char* ssid = "tiles";
+const char* ssid = "darkblack";
 // and your network password here
-const char* password = "peekaboo";
+const char* password = "peekaboo123";
 
 using namespace httpd;
 
@@ -221,7 +221,7 @@ byte previousPINs[TOTAL_PORTS];
 void analogWriteCallback(byte pin, int value) {
   Serial.println("Firmata analogWriteCallback");
   if (pin < TOTAL_PINS) {
-    switch (Firmata.getPinMode(pin)) {
+    switch (WSFirmata.getPinMode(pin)) {
       /*
       case PIN_MODE_SERVO:
         if (IS_PIN_DIGITAL(pin))
@@ -232,7 +232,7 @@ void analogWriteCallback(byte pin, int value) {
       case PIN_MODE_PWM:
         if (IS_PIN_PWM(pin))
           analogWrite(PIN_TO_PWM(pin), value);
-        Firmata.setPinState(pin, value);
+        WSFirmata.setPinState(pin, value);
         break;
     }
   }
@@ -251,7 +251,7 @@ void reportAnalogCallback(byte analogPin, int value) {
         // Send pin value immediately. This is helpful when connected via
         // ethernet, wi-fi or bluetooth so pin states can be known upon
         // reconnecting.
-        Firmata.sendAnalog(analogPin, analogRead(analogPin));
+        WSFirmata.sendAnalog(analogPin, analogRead(analogPin));
       }
     }
   }
@@ -263,8 +263,8 @@ void outputPort(byte portNumber, byte portValue, byte forceSend) {
   portValue = portValue & portConfigInputs[portNumber];
   // only send if the value is different than previously sent
   if (forceSend || previousPINs[portNumber] != portValue) {
-    Firmata.sendDigitalPort(portNumber, portValue);
-    Firmata.flush();
+    WSFirmata.sendDigitalPort(portNumber, portValue);
+    WSFirmata.flush();
     previousPINs[portNumber] = portValue;
   }
 }
@@ -272,8 +272,8 @@ void outputPort(byte portNumber, byte portValue, byte forceSend) {
 void setPinValueCallback(byte pin, int value) {
   Serial.print("Firmata setPinValueCallback "); Serial.print(pin); Serial.print(" "); Serial.println(value);
   if (pin < TOTAL_PINS && IS_PIN_DIGITAL(pin)) {
-    if (Firmata.getPinMode(pin) == OUTPUT) {
-      Firmata.setPinState(pin, value);
+    if (WSFirmata.getPinMode(pin) == OUTPUT) {
+      WSFirmata.setPinState(pin, value);
       digitalWrite(PIN_TO_DIGITAL(pin), value);
     }
   }
@@ -302,7 +302,7 @@ void reportDigitalCallback(byte port, int value)
 void setPinModeCallback(byte pin, int mode)
 {
   Serial.print("Firmata setPinModeCallback "); Serial.print(pin); Serial.print(" "); Serial.println(mode);
-  if (Firmata.getPinMode(pin) == PIN_MODE_IGNORE)
+  if (WSFirmata.getPinMode(pin) == PIN_MODE_IGNORE)
     return;
 
 /*
@@ -328,7 +328,7 @@ void setPinModeCallback(byte pin, int mode)
       portConfigInputs[pin / 8] &= ~(1 << (pin & 7));
     }
   }
-  Firmata.setPinState(pin, 0);
+  WSFirmata.setPinState(pin, 0);
   switch (mode) {
     case PIN_MODE_ANALOG:
       if (IS_PIN_ANALOG(pin)) {
@@ -339,7 +339,7 @@ void setPinModeCallback(byte pin, int mode)
           digitalWrite(PIN_TO_DIGITAL(pin), LOW); // disable internal pull-ups
 #endif
         }
-        Firmata.setPinMode(pin, PIN_MODE_ANALOG);
+        WSFirmata.setPinMode(pin, PIN_MODE_ANALOG);
       }
       break;
     case INPUT:
@@ -349,31 +349,31 @@ void setPinModeCallback(byte pin, int mode)
         // deprecated since Arduino 1.0.1 - TODO: drop support in Firmata 2.6
         digitalWrite(PIN_TO_DIGITAL(pin), LOW); // disable internal pull-ups
 #endif
-        Firmata.setPinMode(pin, INPUT);
+        WSFirmata.setPinMode(pin, INPUT);
       }
       break;
     case PIN_MODE_PULLUP:
       if (IS_PIN_DIGITAL(pin)) {
         pinMode(PIN_TO_DIGITAL(pin), INPUT_PULLUP);
-        Firmata.setPinMode(pin, PIN_MODE_PULLUP);
-        Firmata.setPinState(pin, 1);
+        WSFirmata.setPinMode(pin, PIN_MODE_PULLUP);
+        WSFirmata.setPinState(pin, 1);
       }
       break;
     case OUTPUT:
       if (IS_PIN_DIGITAL(pin)) {
-        if (Firmata.getPinMode(pin) == PIN_MODE_PWM) {
+        if (WSFirmata.getPinMode(pin) == PIN_MODE_PWM) {
           // Disable PWM if pin mode was previously set to PWM.
           digitalWrite(PIN_TO_DIGITAL(pin), LOW);
         }
         pinMode(PIN_TO_DIGITAL(pin), OUTPUT);
-        Firmata.setPinMode(pin, OUTPUT);
+        WSFirmata.setPinMode(pin, OUTPUT);
       }
       break;
     case PIN_MODE_PWM:
       if (IS_PIN_PWM(pin)) {
         pinMode(PIN_TO_PWM(pin), OUTPUT);
         analogWrite(PIN_TO_PWM(pin), 0);
-        Firmata.setPinMode(pin, PIN_MODE_PWM);
+        WSFirmata.setPinMode(pin, PIN_MODE_PWM);
       }
       break;
       /*
@@ -401,7 +401,7 @@ void setPinModeCallback(byte pin, int mode)
 #endif
       break;
     default:
-      Firmata.sendString("Unknown pin mode"); // TODO: put error msgs in EEPROM
+      WSFirmata.sendString("Unknown pin mode"); // TODO: put error msgs in EEPROM
   }
   // TODO: save status to EEPROM here, if changed
 }
@@ -568,72 +568,72 @@ void sysexCallback(byte command, byte argc, byte *argv) {
       break;
     case CAPABILITY_QUERY:
       Serial.println("SYSEX CALLBACK CAPABILITY_QUERY");
-      Firmata.write(START_SYSEX);
-      Firmata.write(CAPABILITY_RESPONSE);
+      WSFirmata.write(START_SYSEX);
+      WSFirmata.write(CAPABILITY_RESPONSE);
       for (byte pin = 0; pin < TOTAL_PINS; pin++) {
         if (IS_PIN_DIGITAL(pin)) {
-          Firmata.write((byte)INPUT);
-          Firmata.write(1);
-          Firmata.write((byte)PIN_MODE_PULLUP);
-          Firmata.write(1);
-          Firmata.write((byte)OUTPUT);
-          Firmata.write(1);
+          WSFirmata.write((byte)INPUT);
+          WSFirmata.write(1);
+          WSFirmata.write((byte)PIN_MODE_PULLUP);
+          WSFirmata.write(1);
+          WSFirmata.write((byte)OUTPUT);
+          WSFirmata.write(1);
         }
         if (IS_PIN_ANALOG(pin)) {
-          Firmata.write(PIN_MODE_ANALOG);
-          Firmata.write(10); // 10 = 10-bit resolution
+          WSFirmata.write(PIN_MODE_ANALOG);
+          WSFirmata.write(10); // 10 = 10-bit resolution
         }
         if (IS_PIN_PWM(pin)) {
-          Firmata.write(PIN_MODE_PWM);
-          Firmata.write(DEFAULT_PWM_RESOLUTION);
+          WSFirmata.write(PIN_MODE_PWM);
+          WSFirmata.write(DEFAULT_PWM_RESOLUTION);
         }
         if (IS_PIN_DIGITAL(pin)) {
-          Firmata.write(PIN_MODE_SERVO);
-          Firmata.write(14);
+          WSFirmata.write(PIN_MODE_SERVO);
+          WSFirmata.write(14);
         }
         if (IS_PIN_I2C(pin)) {
-          Firmata.write(PIN_MODE_I2C);
-          Firmata.write(1);  // TODO: could assign a number to map to SCL or SDA
+          WSFirmata.write(PIN_MODE_I2C);
+          WSFirmata.write(1);  // TODO: could assign a number to map to SCL or SDA
         }
 #ifdef FIRMATA_SERIAL_FEATURE
         serialFeature.handleCapability(pin);
 #endif
-        Firmata.write(127);
+        WSFirmata.write(127);
       }
-      Firmata.write(END_SYSEX);
-      Firmata.flush();
+      WSFirmata.write(END_SYSEX);
+      WSFirmata.flush();
       break;
     case PIN_STATE_QUERY:
       Serial.print("SYSEX CALLBACK PIN_STATE_QUERY ");
       if (argc > 0) {
         byte pin = argv[0];
-        Firmata.write(START_SYSEX);
-        Firmata.write(PIN_STATE_RESPONSE);
-        Firmata.write(pin);
+        WSFirmata.write(START_SYSEX);
+        WSFirmata.write(PIN_STATE_RESPONSE);
+        WSFirmata.write(pin);
         if (pin < TOTAL_PINS) {
-          Firmata.write(Firmata.getPinMode(pin));
-          Firmata.write((byte)Firmata.getPinState(pin) & 0x7F);
-          if (Firmata.getPinState(pin) & 0xFF80) {
-            Firmata.write((byte)(Firmata.getPinState(pin) >> 7) & 0x7F);
+          WSFirmata.write(WSFirmata.getPinMode(pin));
+          WSFirmata.write((byte)WSFirmata.getPinState(pin) & 0x7F);
+          if (WSFirmata.getPinState(pin) & 0xFF80) {
+            WSFirmata.write((byte)(WSFirmata.getPinState(pin) >> 7) & 0x7F);
           }
-          if (Firmata.getPinState(pin) & 0xC000) {
-            Firmata.write((byte)(Firmata.getPinState(pin) >> 14) & 0x7F);
+          if (WSFirmata.getPinState(pin) & 0xC000) {
+            WSFirmata.write((byte)(WSFirmata.getPinState(pin) >> 14) & 0x7F);
           }
-          Firmata.write(digitalRead(pin));
+          WSFirmata.write(digitalRead(pin));
         }
-        Firmata.write(END_SYSEX);
-        Firmata.flush();
+        WSFirmata.write(END_SYSEX);
+        WSFirmata.flush();
       }
       break;
     case ANALOG_MAPPING_QUERY:
       Serial.println("SYSEX CALLBACK ANALOG_MAPPING_QUERY");
-      Firmata.write(START_SYSEX);
-      Firmata.write(ANALOG_MAPPING_RESPONSE);
+      WSFirmata.write(START_SYSEX);
+      WSFirmata.write(ANALOG_MAPPING_RESPONSE);
       for (byte pin = 0; pin < TOTAL_PINS; pin++) {
-        Firmata.write(IS_PIN_ANALOG(pin) ? PIN_TO_ANALOG(pin) : 127);
+        WSFirmata.write(IS_PIN_ANALOG(pin) ? PIN_TO_ANALOG(pin) : 127);
       }
-      Firmata.write(END_SYSEX);
-      Firmata.flush();
+      WSFirmata.write(END_SYSEX);
+      WSFirmata.flush();
       break;
 
     case SERIAL_MESSAGE:
@@ -670,23 +670,23 @@ void checkDigitalInputs(void) {
 void interrupt(int pin) {
   if(h->firmataConnected()) {
     Serial.print("pin:");Serial.print(pin);
-    Firmata.write(START_SYSEX);
+    WSFirmata.write(START_SYSEX);
     //Serial.print(START_SYSEX, HEX); Serial.print(" ");
-    Firmata.write(PIN_STATE_RESPONSE);
+    WSFirmata.write(PIN_STATE_RESPONSE);
     //Serial.print(PIN_STATE_RESPONSE, HEX);
-    Firmata.write(pin);
+    WSFirmata.write(pin);
     if (pin < TOTAL_PINS) {
       //Serial.print(" state:");Serial.println(Firmata.getPinState(pin));
-      Firmata.write(Firmata.getPinMode(pin));
-      //Serial.print(Firmata.getPinMode(pin), HEX); Serial.print(" ");
-      Firmata.write((byte)Firmata.getPinState(pin) & 0x7F);
+      WSFirmata.write(WSFirmata.getPinMode(pin));
+      //Serial.print(WSFirmata.getPinMode(pin), HEX); Serial.print(" ");
+      WSFirmata.write((byte)WSFirmata.getPinState(pin) & 0x7F);
       //Serial.print("state: "); Serial.print((byte)Firmata.getPinState(pin) & 0x7F, HEX); Serial.println();
       //Serial.print("pin value: "); Serial.println(digitalRead(pin));
-      if (Firmata.getPinState(pin) & 0xFF80) Firmata.write((byte)(Firmata.getPinState(pin) >> 7) & 0x7F);
-      if (Firmata.getPinState(pin) & 0xC000) Firmata.write((byte)(Firmata.getPinState(pin) >> 14) & 0x7F);
+      if (WSFirmata.getPinState(pin) & 0xFF80) WSFirmata.write((byte)(WSFirmata.getPinState(pin) >> 7) & 0x7F);
+      if (WSFirmata.getPinState(pin) & 0xC000) WSFirmata.write((byte)(WSFirmata.getPinState(pin) >> 14) & 0x7F);
     }
-    Firmata.write(END_SYSEX);
-    Firmata.flush();
+    WSFirmata.write(END_SYSEX);
+    WSFirmata.flush();
   }
 }
 
@@ -822,13 +822,13 @@ void setup() {
 
   h->RegisterSocketCallback((SocketCallback)SocketOnMessage); // callback handler for websocket messages
 
-  Firmata.setFirmwareVersion(FIRMATA_FIRMWARE_MAJOR_VERSION, FIRMATA_FIRMWARE_MINOR_VERSION);
+  WSFirmata.setFirmwareVersion(FIRMATA_FIRMWARE_MAJOR_VERSION, FIRMATA_FIRMWARE_MINOR_VERSION);
         
-  Firmata.attach(ANALOG_MESSAGE, analogWriteCallback);
-  Firmata.attach(START_SYSEX, sysexCallback);
-  Firmata.attach(REPORT_DIGITAL, reportDigitalCallback);
-  Firmata.attach(SET_PIN_MODE, setPinModeCallback);
-  Firmata.attach(SET_DIGITAL_PIN_VALUE, setPinValueCallback);
+  WSFirmata.attach(ANALOG_MESSAGE, analogWriteCallback);
+  WSFirmata.attach(START_SYSEX, sysexCallback);
+  WSFirmata.attach(REPORT_DIGITAL, reportDigitalCallback);
+  WSFirmata.attach(SET_PIN_MODE, setPinModeCallback);
+  WSFirmata.attach(SET_DIGITAL_PIN_VALUE, setPinValueCallback);
 
   // Start the server
   h->begin();
