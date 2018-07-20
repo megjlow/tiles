@@ -26,6 +26,8 @@ const char uploadHtml[] = R"=====(<html charset="utf-8">
 </body>
 </html>)=====";
 
+int counter1 = 0;
+int counter2 = 0;
 
 #ifdef ARDUINO_STM32_FEATHER
 #include <adafruit_feather.h>
@@ -271,6 +273,7 @@ void outputPort(byte portNumber, byte portValue, byte forceSend) {
 
 void setPinValueCallback(byte pin, int value) {
   Serial.print("Firmata setPinValueCallback "); Serial.print(pin); Serial.print(" "); Serial.println(value);
+  counter1++;
   if (pin < TOTAL_PINS && IS_PIN_DIGITAL(pin)) {
     if (WSFirmata.getPinMode(pin) == OUTPUT) {
       WSFirmata.setPinState(pin, value);
@@ -322,6 +325,7 @@ void setPinModeCallback(byte pin, int mode)
     reportAnalogCallback(PIN_TO_ANALOG(pin), mode == PIN_MODE_ANALOG ? 1 : 0); // turn on/off reporting
   }
   if (IS_PIN_DIGITAL(pin)) {
+    Serial.println("pin is digital");
     if (mode == INPUT || mode == PIN_MODE_PULLUP) {
       portConfigInputs[pin / 8] |= (1 << (pin & 7));
     } else {
@@ -360,10 +364,12 @@ void setPinModeCallback(byte pin, int mode)
       }
       break;
     case OUTPUT:
+      Serial.print(PIN_TO_DIGITAL(pin)); Serial.println(" setting to output");
       if (IS_PIN_DIGITAL(pin)) {
         if (WSFirmata.getPinMode(pin) == PIN_MODE_PWM) {
           // Disable PWM if pin mode was previously set to PWM.
-          digitalWrite(PIN_TO_DIGITAL(pin), LOW);
+          analogWrite(PIN_TO_DIGITAL(pin), 0);
+          //digitalWrite(PIN_TO_DIGITAL(pin), LOW);
         }
         pinMode(PIN_TO_DIGITAL(pin), OUTPUT);
         WSFirmata.setPinMode(pin, OUTPUT);
@@ -701,6 +707,9 @@ void interrupt13() {
 
 void setup() {
   Serial.begin(115200);
+
+  counter1 = 0;
+  counter2 = 0;
   
   //pinMode(2, OUTPUT);
   //pinMode(4, OUTPUT);
