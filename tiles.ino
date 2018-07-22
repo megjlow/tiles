@@ -35,9 +35,9 @@ int counter2 = 0;
 
 
 // put your network ssid in here
-const char* ssid = "darkblack";
+const char* ssid = "tiles";
 // and your network password here
-const char* password = "peekaboo123";
+const char* password = "peekaboo";
 
 using namespace httpd;
 
@@ -280,6 +280,7 @@ void setPinValueCallback(byte pin, int value) {
       digitalWrite(PIN_TO_DIGITAL(pin), value);
     }
   }
+  Serial.print("counter1 "); Serial.println(counter1);
 }
 
 void reportDigitalCallback(byte port, int value)
@@ -325,7 +326,6 @@ void setPinModeCallback(byte pin, int mode)
     reportAnalogCallback(PIN_TO_ANALOG(pin), mode == PIN_MODE_ANALOG ? 1 : 0); // turn on/off reporting
   }
   if (IS_PIN_DIGITAL(pin)) {
-    Serial.println("pin is digital");
     if (mode == INPUT || mode == PIN_MODE_PULLUP) {
       portConfigInputs[pin / 8] |= (1 << (pin & 7));
     } else {
@@ -364,7 +364,6 @@ void setPinModeCallback(byte pin, int mode)
       }
       break;
     case OUTPUT:
-      Serial.print(PIN_TO_DIGITAL(pin)); Serial.println(" setting to output");
       if (IS_PIN_DIGITAL(pin)) {
         if (WSFirmata.getPinMode(pin) == PIN_MODE_PWM) {
           // Disable PWM if pin mode was previously set to PWM.
