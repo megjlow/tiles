@@ -26,9 +26,6 @@ const char uploadHtml[] = R"=====(<html charset="utf-8">
 </body>
 </html>)=====";
 
-int counter1 = 0;
-int counter2 = 0;
-
 #ifdef ARDUINO_STM32_FEATHER
 #include <adafruit_feather.h>
 #endif
@@ -273,14 +270,12 @@ void outputPort(byte portNumber, byte portValue, byte forceSend) {
 
 void setPinValueCallback(byte pin, int value) {
   Serial.print("Firmata setPinValueCallback "); Serial.print(pin); Serial.print(" "); Serial.println(value);
-  counter1++;
   if (pin < TOTAL_PINS && IS_PIN_DIGITAL(pin)) {
     if (WSFirmata.getPinMode(pin) == OUTPUT) {
       WSFirmata.setPinState(pin, value);
       digitalWrite(PIN_TO_DIGITAL(pin), value);
     }
   }
-  Serial.print("counter1 "); Serial.println(counter1);
 }
 
 void reportDigitalCallback(byte port, int value)
@@ -706,9 +701,6 @@ void interrupt13() {
 
 void setup() {
   Serial.begin(115200);
-
-  counter1 = 0;
-  counter2 = 0;
   
   //pinMode(2, OUTPUT);
   //pinMode(4, OUTPUT);
